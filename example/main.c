@@ -21,6 +21,7 @@
 
 RFont_font* english;
 RFont_font* japanese;
+RFont_font* english2;
 
 RFont_glyph glyphFallback(RFont_renderer* renderer, RFont_font* font, u32 codepoint, size_t size) {
     RFont_glyph g;
@@ -75,9 +76,12 @@ int main(int argc, char **argv) {
 	glClear(GL_COLOR_BUFFER_BIT);
 
     english = RFont_font_init(renderer, "DejaVuSans.ttf", 60, 500, 500);
-    japanese = RFont_font_init(renderer, "DroidSansJapanese.ttf", 60, 500, 500);
+    english2 = RFont_font_init(renderer, "COMICSANS.ttf", 60, 500, 500);
 
-    /*RFont_set_glyph_fallback_callback(glyphFallback); */
+printf("g\n");
+	japanese = RFont_font_init(renderer, "DroidSansJapanese.ttf", 60, 500, 500);
+
+	/* RFont_set_glyph_fallback_callback(glyphFallback); */
 
     while (RGFW_window_shouldClose(win) == 0) {
 		RGFW_pollEvents();
@@ -89,7 +93,12 @@ int main(int argc, char **argv) {
 		glViewport(0, 0, (size_t)w, (size_t)h);
 		RFont_renderer_set_framebuffer(renderer, (u32)w, (u32)h);
 
-		RFont_renderer_set_color(renderer, 0.0f, 1.0f, 0, 1.0f);
+		RFont_renderer_set_color(renderer, 1.0f, 1.0f, 1.0f, 1.0f);
+        RFont_draw_text(renderer, english, "Something about a fast lazy 犬.", 0, 10, 60);
+
+        RFont_draw_text(renderer, english2, "Hello, GLFW", 0, 120, 20);
+
+		/*RFont_renderer_set_color(renderer, 0.0f, 1.0f, 0, 1.0f);
         RFont_draw_text(renderer, english, "abcdefghijklmnopqrstuvwxyz\n1234567890@.<>,/?\\|[{]}", 0, 0, 60);
         RFont_draw_text_spacing(renderer, english, "`~!#$%^&*()_-=+", 0, 120, 60, 1.0f);
         RFont_renderer_set_color(renderer, 1.0f, 0.0f, 0, 1.0f);
@@ -97,12 +106,13 @@ int main(int argc, char **argv) {
         RFont_renderer_set_color(renderer, 0.0f, 1.0f, 0, 1.0f);
         RFont_draw_text(renderer, english, "RFont_draw_text(); ⌫§", 0, 240, 60);
         RFont_renderer_set_color(renderer, 1.0f, 0.0f, 0, 1.0f);
-        RFont_draw_text(renderer, japanese, "テキスト例hola", 0, 300, 60);
+        RFont_draw_text(renderer, japanese, "テキスト例hola", 0, 300, 60);*/
         RGFW_window_swapBuffers_OpenGL(win);
     }
 
-    RFont_font_free(renderer, english);
-    RFont_font_free(renderer, japanese);
+    RFont_font_free(renderer, english2);
+	RFont_font_free(renderer, english);
+/*    RFont_font_free(renderer, japanese); */
 	RFont_renderer_free(renderer);
     RGFW_window_close(win);
     return 0;

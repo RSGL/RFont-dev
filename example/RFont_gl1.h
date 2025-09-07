@@ -133,9 +133,10 @@ void RFont_gl1_bitmap_to_atlas(RFont_GL1_info* ctx, RFont_texture atlas, u32 atl
 	*x += w;
 }
 
-void RFont_gl1_renderer_text(RFont_GL1_info* ctx, RFont_texture atlas, float* verts, float* tcoords, size_t nverts) {
-	size_t i;
+void RFont_gl1_renderer_text(RFont_GL1_info* ctx, const RFont_render_data* data) {
+	size_t i = 0;
 	size_t tIndex = 0;
+	size_t index = 0;
 
 	glEnable(GL_TEXTURE_2D);
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
@@ -150,7 +151,7 @@ void RFont_gl1_renderer_text(RFont_GL1_info* ctx, RFont_texture atlas, float* ve
 	glEnable(GL_BLEND);
 	glEnable(GL_TEXTURE_2D);
 
-	glBindTexture(GL_TEXTURE_2D, (u32)atlas);
+	glBindTexture(GL_TEXTURE_2D, (u32)data->atlas);
 
 	glPushMatrix();
 	glLoadIdentity();
@@ -163,11 +164,12 @@ void RFont_gl1_renderer_text(RFont_GL1_info* ctx, RFont_texture atlas, float* ve
 		   ctx->color[3]
 		   );
 
-	for (i = 0; i < (nverts * 3); i += 3) {
-		glTexCoord2f(tcoords[tIndex], tcoords[tIndex + 1]);
-		tIndex += 2;
+	for (index = 0; index < data->nelements; index++) {
+		i = data->elements[index] * 3;
+		tIndex = data->elements[index] * 2;
 
-		glVertex2f(verts[i], verts[i + 1]);
+		glTexCoord2f(data->tcoords[tIndex], data->tcoords[tIndex + 1]);
+		glVertex2f(data->verts[i], data->verts[i + 1]);
 	}
 	glEnd();
 	glPopMatrix();
@@ -187,7 +189,7 @@ RFont_renderer_proc RFont_gl1_renderer_proc(void) {
 	proc.create_atlas = (RFont_texture (*)(void*, u32, u32))RFont_gl1_create_atlas;
 	proc.free_atlas = (void (*)(void*, RFont_texture))RFont_gl1_free_atlas;
 	proc.bitmap_to_atlas = (void(*)(void*, RFont_texture, u32, u32, u32, u8*, float, float, float*, float*))RFont_gl1_bitmap_to_atlas;
-	proc.render = (void (*)(void*, RFont_texture, float*, float*, size_t))RFont_gl1_renderer_text;
+	proc.render = (void (*)(void*, const RFont_render_data*))RFont_gl1_renderer_text;
 	proc.set_color = (void (*)(void*, float, float, float, float))RFont_gl1_renderer_set_color;
 	proc.set_framebuffer = (void (*)(void*, u32, u32))RFont_gl1_renderer_set_framebuffer;
 	proc.freePtr = (void (*)(void*))RFont_gl1_renderer_freePtr;
