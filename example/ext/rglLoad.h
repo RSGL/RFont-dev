@@ -141,6 +141,7 @@ typedef void (*glGenVertexArraysPROC)(GLsizei n, GLuint *arrays);
 typedef void (*glGenBuffersPROC)(GLsizei n, GLuint *buffers);
 typedef void (*glBindVertexArrayPROC)(GLuint array);
 typedef GLint (*glGetUniformLocationPROC)(GLuint program, const GLchar *name);
+typedef void (*glUniform4fvPROC)(GLint location, GLsizei count, const GLfloat *value);
 typedef void (*glUniformMatrix4fvPROC)(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 typedef void (*glTexImage2DPROC)(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void *pixels);
 typedef void (*glActiveTexturePROC) (GLenum texture);
@@ -177,6 +178,7 @@ glGenVertexArraysPROC glGenVertexArraysSRC = NULL;
 glGenBuffersPROC glGenBuffersSRC = NULL;
 glBindVertexArrayPROC glBindVertexArraySRC = NULL;
 glGetUniformLocationPROC glGetUniformLocationSRC = NULL;
+glUniform4fvPROC glUniform4fvSRC = NULL;
 glUniformMatrix4fvPROC glUniformMatrix4fvSRC = NULL;
 glActiveTexturePROC glActiveTextureSRC = NULL;
 glDebugMessageCallbackPROC glDebugMessageCallbackSRC = NULL;
@@ -213,6 +215,7 @@ glViewportPROC glViewportSRC = NULL;
 #define glGenBuffers glGenBuffersSRC
 #define glBindVertexArray glBindVertexArraySRC
 #define glGetUniformLocation glGetUniformLocationSRC
+#define glUniform4fv glUniform4fvSRC
 #define glUniformMatrix4fv glUniformMatrix4fvSRC
 #define glDebugMessageCallback glDebugMessageCallbackSRC
 #define glDrawElements glDrawElementsSRC
@@ -255,7 +258,8 @@ int RGL_loadGL3(RGLloadfunc proc) {
     RGL_PROC_DEF(proc, glGenBuffers);
     RGL_PROC_DEF(proc, glBindVertexArray);
     RGL_PROC_DEF(proc, glGetUniformLocation);
-    RGL_PROC_DEF(proc, glUniformMatrix4fv);
+    RGL_PROC_DEF(proc, glUniform4fv);
+	RGL_PROC_DEF(proc, glUniformMatrix4fv);
     RGL_PROC_DEF(proc, glActiveTexture);
     RGL_PROC_DEF(proc, glDebugMessageCallback);
     RGL_PROC_DEF(proc, glDrawElements);
@@ -290,7 +294,8 @@ int RGL_loadGL3(RGLloadfunc proc) {
         glGenBuffersSRC == NULL ||
         glBindVertexArraySRC == NULL ||
         glGetUniformLocationSRC == NULL ||
-        glUniformMatrix4fvSRC == NULL ||
+        glUniform4fvSRC == NULL ||
+		glUniformMatrix4fvSRC == NULL ||
 	    glClearSRC == NULL ||
 		glClearColorSRC == NULL ||
 		glViewportSRC == NULL

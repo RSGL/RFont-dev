@@ -11,12 +11,10 @@ typedef struct RFont_mat4 {
 
 typedef struct RFont_GL_info{
 	u32 vao, vbo, tbo, cbo, ebo, program, vShader, fShader;
-	i32 matrixLoc;
+	i32 matrixLoc, colorLoc;
 
-	u32 width, height;
 	float color[4];
 	RFont_mat4 matrix;
-	float colors[RFONT_INIT_VERTS * 2];
 } RFont_GL_info;
 
 RFONT_API RFont_renderer_proc RFont_gl_renderer_proc(void);
@@ -135,8 +133,7 @@ void RFont_gl_bitmap_to_atlas(RFont_GL_info* ctx, RFont_texture atlas, u32 atlas
 #define RFONT_MULTILINE_STR(s) #s
 
 void RFont_gl_renderer_set_framebuffer(RFont_GL_info* ctx, u32 w, u32 h) {
-	ctx->width = w;
-	ctx->height = h;
+	ctx->matrix = RFont_ortho(0, (float)w, (float)h, 0, -1.0, 1.0);
 }
 
 void RFont_gl_renderer_set_color(RFont_GL_info* ctx, float r, float g, float b, float a) {
@@ -151,14 +148,12 @@ void RFont_gl_renderer_internal_initPtr(RFont_GL_info* ctx) {
 		\x23version 330 core       \n
 		layout (location = 0) in vec3 vertexPosition;
 		layout (location = 1) in vec2 vertexTexCoord;
-		layout (location = 2) in vec4 inColor;
 		out vec2 fragTexCoord;
 		out vec4 fragColor;
 
 		uniform mat4 matrix;
 
 		void main() {
-			fragColor = inColor;
 			gl_Position = matrix * vec4(vertexPosition, 1.0);
 			fragTexCoord = vertexTexCoord;
 		}
@@ -168,13 +163,13 @@ void RFont_gl_renderer_internal_initPtr(RFont_GL_info* ctx) {
 		\x23version 330 core                \n
 		out vec4 FragColor;
 
-		in vec4 fragColor;
 		in vec2 fragTexCoord;
+		uniform vec4 color;
 
 		uniform sampler2D texture0;
 
 		void main() {
-			FragColor = texture(texture0, fragTexCoord) * fragColor;
+			FragColor = texture(texture0, fragTexCoord) * color;
 		}
 	);
 
@@ -210,12 +205,12 @@ void RFont_gl_renderer_internal_initPtr(RFont_GL_info* ctx) {
 
 	glUseProgram(ctx->program);
 	ctx->matrixLoc = glGetUniformLocation(ctx->program, "matrix");
+	ctx->colorLoc = glGetUniformLocation(ctx->program, "color");
 	glUseProgram(0);
 }
 
-void RFont_gl_renderer_text(RFont_GL_info* ctx, RFont_texture atlas, float* verts, float* tcoords, size_t nverts) {
-	u32 i = 0;
-	assert(ctx && nverts);
+void RFont_gl_renderer_text(RFont_GL_info* ctx, const RFont_render_data* data) {
+	assert(ctx && data && data->nverts);
 
 	glEnable(GL_TEXTURE_2D);
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
@@ -232,29 +227,28 @@ void RFont_gl_renderer_text(RFont_GL_info* ctx, RFont_texture atlas, float* vert
 
 	glEnableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
-	glBufferData(GL_ARRAY_BUFFER, (i32)(nverts * 3 * sizeof(float)), verts, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, (i32)(data->nverts * 3 * sizeof(float)), data->verts, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 
 	glEnableVertexAttribArray(1);
 	glBindBuffer(GL_ARRAY_BUFFER, ctx->tbo);
-	glBufferData(GL_ARRAY_BUFFER, (i32)(nverts * 2 * sizeof(float)), tcoords, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, (i32)(data->nverts * 2 * sizeof(float)), data->tcoords, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
 
-	for (i = 0; i < (nverts * 4); i += 4)
-		memcpy(&ctx->colors[i], ctx->color, sizeof(float) * 4);
+	#ifndef GL_ELEMENT_ARRAY_BUFFER
+		#define GL_ELEMENT_ARRAY_BUFFER 0x8893
+	#endif
 
-	glEnableVertexAttribArray(2);
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->cbo);
-	glBufferData(GL_ARRAY_BUFFER, (i32)(nverts * 4 * sizeof(float)), ctx->colors, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 0, NULL);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, (i32)(data->nelements * sizeof(u16)), data->elements, GL_DYNAMIC_DRAW);
 
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, (u32)atlas);
-	ctx->matrix = RFont_ortho(0, (float)ctx->width, (float)ctx->height, 0, -1.0, 1.0);
-
+	glBindTexture(GL_TEXTURE_2D, (u32)data->atlas);
 	glUniformMatrix4fv(ctx->matrixLoc, 1, GL_FALSE, ctx->matrix.m);
 
-	glDrawArrays(GL_TRIANGLES, 0, (i32)nverts);
+	glUniform4fv(ctx->colorLoc, 1, ctx->color);
+
+	glDrawElements(GL_TRIANGLES, (i32)data->nelements, GL_UNSIGNED_SHORT, NULL);
 	glUseProgram(0);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -288,7 +282,7 @@ RFont_renderer_proc RFont_gl_renderer_proc(void) {
 	proc.create_atlas = (RFont_texture (*)(void*, u32, u32))RFont_gl_create_atlas;
 	proc.free_atlas = (void (*)(void*, RFont_texture))RFont_gl_free_atlas;
 	proc.bitmap_to_atlas = (void(*)(void*, RFont_texture, u32, u32, u32, u8*, float, float, float*, float*))RFont_gl_bitmap_to_atlas;
-	proc.render = (void (*)(void*, RFont_texture, float*, float*, size_t))RFont_gl_renderer_text;
+	proc.render = (void (*)(void*, const RFont_render_data*))RFont_gl_renderer_text;
 	proc.set_color = (void (*)(void*, float, float, float, float))RFont_gl_renderer_set_color;
 	proc.set_framebuffer = (void (*)(void*, u32, u32))RFont_gl_renderer_set_framebuffer;
 	proc.freePtr = (void (*)(void*))RFont_gl_renderer_freePtr;
